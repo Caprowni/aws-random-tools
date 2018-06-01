@@ -2,6 +2,8 @@ import boto3
 from prettytable import PrettyTable
 from re import compile
 import re
+import os
+
 
 x = PrettyTable(["Action", "ResourceID", "ResourceType"])
 
@@ -12,8 +14,10 @@ class Change_Set(object):
         self.get_stacks()
 
     def create_clients(self):
+        print ("You're cwd is {}".format(os.getcwd()))
         self.cf = boto3.client('cloudformation', region_name='eu-west-1')
         self.s3 = boto3.client('s3', region_name='eu-west-1')
+        self.waiter = self.cf.get_waiter('stack_update_complete')
 
     def check_bucket_name(self):
         if '..' in self.new_name:
@@ -55,15 +59,20 @@ class Change_Set(object):
                     print (bucket['Name'])
                 else:
                     pass
-        else:
+        elif choice == "new":
             self.new_name = input("What do you want to call the bucket?")
             self.check_bucket_name()
             self.s3.create_bucket(ACL='private', Bucket=self.new_name)
+        elif choice != "new" or "existing":
+            print("That is not a valid entry...")
+            self.upload_new_template()
         print("\n")
         self.upload_bucket = input("Which bucket do you want to upload your new template to?")
-        file_path = input("Where is your file stored, please enter full path name?")
+        print("\n")
+        local_file = input("Please enter the template name you wish to upload.")
+        print("\n")
         self.file_name = input("What do you want the file to be called on s3?")
-        data = open(file_path, 'rb')
+        data = open(os.getcwd()+"/" + local_file, 'rb')
         try:
             self.s3.put_object(Bucket=self.upload_bucket, Key=self.file_name, Body=data)
         except Exception as e:
@@ -80,6 +89,9 @@ class Change_Set(object):
             ChangeSetName="ChangeSetScript",
             Description=desc
         )
+        self.waiter.wait(StackName=self.stack_name,
+                         WaiterConfig={'Delay': 15})
+        self.describe_change_set()
 
     def describe_change_set(self):
         c = self.cf.describe_change_set(
@@ -91,6 +103,39 @@ class Change_Set(object):
             res = each['ResourceChange']
             x.add_row([res['Action'], res['LogicalResourceId'], res['ResourceType']])
         print(x)
+
+        choice = input("Do you want to execute, delete or keep change-set?")
+        if choice == "execute":
+            self.execute_change_set()
+        elif choice == "delete":
+            self.delete_change_set()
+        elif choice == "keep":
+            print("Your change set will be kept")
+
+    def execute_change_set(self):
+        self.cf.execute_change_set(
+            ChangeSetName='ChangeSetScript',
+            StackName=self.stack_name
+        )
+
+        e = self.cf.describe_stack_events(
+            StackName=self.stack_name
+        )
+
+        events = e['StackEvents']
+        for event in events:
+            self.waiter.wait(StackName=self.stack_name,
+                             WaiterConfig={'Delay': 15})
+
+
+
+    def delete_change_set(self):
+        r = self.cf.delete_change_set(
+            ChangeSetName='ChangeSetScript',
+            StackName=self.stack_name
+        )
+        if r == {}:
+            print("Change set deleted successfully...")
 
 
 Change_Set()
