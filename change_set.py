@@ -5,7 +5,8 @@ import re
 import os
 
 
-x = PrettyTable(["Action", "ResourceID", "ResourceType"])
+x = PrettyTable(["Action", "ResourceID", "ResourceType", "Replacement", "Scope", "Details"])
+x1 = PrettyTable(["Action", "ResourceID", "ResourceType", "Scope", "Details"])
 
 class Change_Set(object):
 
@@ -101,8 +102,15 @@ class Change_Set(object):
         change = c['Changes']
         for each in change:
             res = each['ResourceChange']
-            x.add_row([res['Action'], res['LogicalResourceId'], res['ResourceType']])
+            if res['Action'] == "Modify":
+                x.add_row([res['Action'], res['LogicalResourceId'], res['ResourceType'], res['Replacement'],res['Scope'],
+                       res['Details']])
+            else:
+                x1.add_row(
+                    [res['Action'], res['LogicalResourceId'], res['ResourceType'], res['Replacement'], res['Scope'],
+                     res['Details']])
         print(x)
+        print(x1)
 
         choice = input("Do you want to execute, delete or keep change-set?")
         if choice == "execute":
