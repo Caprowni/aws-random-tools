@@ -15,4 +15,4 @@ install:
 before_script:
   - pycodestyle --version
 
-script:
+script: pytest
