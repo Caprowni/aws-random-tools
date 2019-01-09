@@ -1,18 +1,15 @@
 language: python
 sudo: false
 python:
-  - "2.7"
   - "3.4"
   - "3.5"
   - "3.6"
 
 before_install:
-  - pip install --upgrade pip setuptools wheel
-
-install:
-  - pip install --upgrade pycodestyle pyflakes
+  - make python_install
 
 before_script:
   - pycodestyle --version
+  - pyflakes --version
 
-script: pytest -v tests/test.py
+script: make python_run
