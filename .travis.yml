@@ -14,3 +14,5 @@ install:
 
 before_script:
   - pycodestyle --version
+
+script:
